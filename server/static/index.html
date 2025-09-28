@@ -428,7 +428,7 @@
     select.appendChild(option)
     for (let i = 0; i < 24; i++) {
       const option = document.createElement('option')
-      option.value = `${i}`
+      option.value = `${i > 9 ? i : "0" + i}`
       option.innerHTML = `${i}-${i + 1}`
       select.appendChild(option)
     }
@@ -473,11 +473,23 @@
     async function fetchKeyCounts(hour = 'all') {
       const response = await fetch('http://localhost:21315/hourly_key_counts');
 
-      let keyCounts = await response.json();
-      keyCounts.forEach(element => {
-        element.hour === hour ? keyCounts = element.data : element
-      });
+      let keyCountsAll = await response.json();
+      let keyCounts = [];
+      for (let i in keyCountsAll) {
+        if (keyCountsAll[i].hour === hour) {
+          keyCounts = keyCountsAll[i].data
+          break
+        }
+      }
+      console.log(keyCounts)
 
+      // 重置键盘图
+      function refresh() {
+        const key = document.querySelectorAll('.key')
+        for (let i = 0; i < key.length; i++){
+          key[i].style.backgroundColor = '#E4E6EA';
+        }
+      }
 
       // 封装渲染函数
       function render() {
@@ -498,8 +510,8 @@
               });
 
               keyElement.addEventListener('mousemove', function (event) {
-                tooltip.style.left = event.pageX + 10 + 'px';  // Update tooltip position
-                tooltip.style.top = event.pageY + 10 + 'px';
+                tooltip.style.left = event.pageX + 20 + 'px';  // Update tooltip position
+                tooltip.style.top = event.pageY + 'px';
               });
 
               keyElement.addEventListener('mouseout', function () {
@@ -511,7 +523,12 @@
           console.error('Error fetching key counts:', error);
         }
       }
-      render()
+      if (keyCounts.length !== 0) {
+        refresh()
+        render()
+      } else {
+        refresh()
+      }
     }
 
     // 每秒钟请求一次数据更新热力图
