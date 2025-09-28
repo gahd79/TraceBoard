@@ -225,7 +225,7 @@
         <div class="key" id="k52"><span>$</span><span>4</span></div>
         <div class="key" id="k53"><span>%</span><span>5</span></div>
         <div class="key" id="k54"><span>^</span><span>6</span></div>
-        <div class="key" id="k55"><span>&</span><span>7</span></div>
+        <div class="key" id="k55"><span>&amp;</span><span>7</span></div>
         <div class="key" id="k56"><span>*</span><span>8</span></div>
         <div class="key" id="k57"><span>(</span><span>9</span></div>
         <div class="key" id="k48"><span>)</span><span>0</span></div>
@@ -270,10 +270,8 @@
         <div class="key" id="k66">B</div>
         <div class="key" id="k78">N</div>
         <div class="key" id="k77">M</div>
-        <div class="key" id="k188"><span>
-            << /span><span>,</span>
-        </div>
-        <div class="key" id="k190"><span>.</span><span>></span></div>
+        <div class="key" id="k188"><span>&lt;</span><span>,</span></div>
+        <div class="key" id="k190"><span>.</span><span>&gt;</span></div>
         <div class="key" id="k191"><span>?</span><span>/</span></div>
         <div class="key" id="k16_right" style="width: 115px;">Shift</div>
         <!-- line6 -->
@@ -517,7 +515,7 @@
     }
 
     // 每秒钟请求一次数据更新热力图
-    setInterval(function(){
+    setInterval(function () {
       fetchKeyCounts(select.value)
       console.log(select.value)
     }, 1000);

@@ -6,6 +6,7 @@ dist
 *.log
 *.spec
 *.db
+*__pycache__*
 # Virtual Environment files
 *traceboard_env*
 venv/
