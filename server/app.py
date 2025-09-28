@@ -20,7 +20,7 @@ from starlette.staticfiles import StaticFiles
 from sqlalchemy import create_engine, Column, Integer, String, DateTime, func
 from sqlalchemy.ext.declarative import declarative_base
 from sqlalchemy.orm import sessionmaker
-from datetime import datetime
+from datetime import datetime, timezone
 
 # SQLAlchemy 数据库设置
 DATABASE_URL = "sqlite:///./key_events.db"  # SQLite 数据库路径
@@ -62,12 +62,20 @@ app.add_middleware(
 
 try:
     # 动态获取静态文件目录路径
-    static_dir = os.path.join(sys._MEIPASS, "static") if getattr(sys, 'frozen', False) else "static"
+    static_dir = (
+        os.path.join(sys._MEIPASS, "static")
+        if getattr(sys, "frozen", False)
+        else "static"
+    )
     # 挂载静态文件目录，用于提供 HTML 和其他静态文件
     app.mount("/static", StaticFiles(directory=static_dir), name="static")
 except:
     # 动态获取静态文件目录路径
-    static_dir = os.path.join(sys._MEIPASS,'server', "static") if getattr(sys, 'frozen', False) else "./server/static"
+    static_dir = (
+        os.path.join(sys._MEIPASS, "server", "static")
+        if getattr(sys, "frozen", False)
+        else "./server/static"
+    )
     # 挂载静态文件目录，用于提供 HTML 和其他静态文件
     app.mount("/static", StaticFiles(directory=static_dir), name="static")
 
@@ -82,7 +90,7 @@ class KeyCount(BaseModel):
 # 返回 HTML 页面
 @app.get("/", response_class=HTMLResponse)
 async def read_dashboard():
-    with open(os.path.join(static_dir, 'index.html'), "r", encoding="utf-8") as file:
+    with open(os.path.join(static_dir, "index.html"), "r", encoding="utf-8") as file:
         html_content = file.read()
     return HTMLResponse(content=html_content, status_code=200)
 
@@ -94,11 +102,103 @@ def get_key_counts():
     db = SessionLocal()
     try:
         # 查询数据库获取按键统计数据
-        results = db.query(KeyEvent.key_name, KeyEvent.virtual_key_code, func.count(KeyEvent.virtual_key_code)) \
-            .group_by(KeyEvent.virtual_key_code) \
+        results = (
+            db.query(
+                KeyEvent.key_name,
+                KeyEvent.virtual_key_code,
+                func.count(KeyEvent.virtual_key_code),
+            )
+            .group_by(KeyEvent.virtual_key_code)
             .all()
+        )
         # 返回格式化后的结果
-        return [{"key_name": row[0], "count": row[2], 'virtual_key_code': row[1]} for row in results]
+        return [
+            {"key_name": row[0], "count": row[2], "virtual_key_code": row[1]}
+            for row in results
+        ]
+    finally:
+        db.close()
+
+
+# 定义按时间统计数据类型
+class HourlyKeyCount(BaseModel):
+    hour: str
+    data: List[KeyCount]
+
+
+# 按照时间来统计按键分布
+@app.get("/hourly_key_counts", response_model=List[HourlyKeyCount])
+def get_hourly_key_counts():
+    # 创建一个新的数据库会话
+    db = SessionLocal()
+    try:
+        # 修改: 使用 %H 格式化字符串仅按小时分组，不区分日期
+        results = (
+            db.query(
+                func.strftime("%H", KeyEvent.timestamp).label("hour"),
+                KeyEvent.key_name,
+                KeyEvent.virtual_key_code,
+                func.count(KeyEvent.id).label("count"),
+            )
+            .group_by(
+                func.strftime("%H", KeyEvent.timestamp),
+                KeyEvent.virtual_key_code,
+            )
+            .order_by(
+                func.strftime("%H", KeyEvent.timestamp),
+                func.count(KeyEvent.id).desc(),
+            )
+            .all()
+        )
+
+        # 按小时分组数据
+        hourly_data = {}
+        for row in results:
+            hour = row[0]
+            key_name = row[1]
+            virtual_key_code = row[2]
+            count = row[3]
+
+            if hour not in hourly_data:
+                hourly_data[hour] = {
+                    "hour": hour,
+                    "data": []
+                }
+
+            hourly_data[hour]["data"].append({
+                "key_name": key_name,
+                "count": count,
+                "virtual_key_code": virtual_key_code,
+            })
+
+        # 添加所有时间的统计数据
+        all_results = (
+            db.query(
+                KeyEvent.key_name,
+                KeyEvent.virtual_key_code,
+                func.count(KeyEvent.virtual_key_code).label("count"),
+            )
+            .group_by(KeyEvent.virtual_key_code)
+            .order_by(func.count(KeyEvent.virtual_key_code).desc())
+            .all()
+        )
+
+        all_data = {
+            "hour": "all",
+            "data": [
+                {
+                    "key_name": row[0],
+                    "count": row[2],
+                    "virtual_key_code": row[1],
+                }
+                for row in all_results
+            ]
+        }
+
+        # 返回格式化后的结果，包括按小时统计数据和总体统计数据
+        result = list(hourly_data.values())
+        result.append(all_data)
+        return result
     finally:
         db.close()
 
@@ -118,7 +218,7 @@ def create_key_event(key_event: KeyEventCreate):
         new_event = KeyEvent(
             key_name=key_event.key_name,
             virtual_key_code=key_event.virtual_key_code,
-            timestamp=datetime.now()
+            timestamp=datetime.now(),
         )
 
         # 将新的事件插入到数据库
@@ -135,6 +235,7 @@ def create_key_event(key_event: KeyEventCreate):
 
 
 # 如果是直接运行此脚本，可以进行一些初始化的操作，但 FastAPI 不需要在此处运行。
-if __name__ == '__main__':
+if __name__ == "__main__":
     import uvicorn
+
     uvicorn.run(app, host="127.0.0.1", port=21315)
