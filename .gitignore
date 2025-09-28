@@ -6,3 +6,12 @@ dist
 *.log
 *.spec
 *.db
+# Virtual Environment files
+*traceboard_env*
+venv/
+env/
+ENV/
+.venv/
+.env/
+env.bak/
+venv.bak/

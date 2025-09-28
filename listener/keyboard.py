@@ -19,8 +19,9 @@ pressed_keys = set()
 
 # 插入按键信息到数据库
 def insert_key_event(key_name: str, virtual_key_code: int):
-    # 获取当前时间戳
-    timestamp = datetime.datetime.now()
+    # 获取当前时间戳，使用timezone.utc替代弃用的utcnow()
+    from datetime import datetime, timezone
+    timestamp = datetime.now(timezone.utc)
     print(key_name, virtual_key_code)
     # API URL
     url = "http://127.0.0.1:21315/key_events"
@@ -28,7 +29,7 @@ def insert_key_event(key_name: str, virtual_key_code: int):
     # 要发送的数据
     data = {
         "key_name": key_name,  # 按键名称
-        "virtual_key_code": virtual_key_code  # 虚拟按键码
+        "virtual_key_code": virtual_key_code,  # 虚拟按键码
     }
 
     # 发送 POST 请求
@@ -50,7 +51,11 @@ def on_press(key):
             vk = key.value.vk
         else:
             vk = key.vk
-        key_name = '-'
+        # 根据按键类型设置按键名称
+        if isinstance(key, Key):
+            key_name = key.name if key.name else str(key)
+        else:
+            key_name = key.char if key.char else str(key)
         # 只在按键没有被记录时记录它
         if vk not in pressed_keys:
             insert_key_event(key_name, vk)
@@ -78,5 +83,5 @@ def start_listener():
         listener.join()
 
 
-if __name__ == '__main__':
+if __name__ == "__main__":
     start_listener()

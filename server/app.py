@@ -39,7 +39,7 @@ class KeyEvent(Base):
     id = Column(Integer, primary_key=True, index=True)
     key_name = Column(String, index=True)
     virtual_key_code = Column(Integer)
-    timestamp = Column(DateTime, default=datetime.utcnow)
+    timestamp = Column(DateTime, default=lambda: datetime.now(timezone.utc))
 
 
 # 创建数据库表（如果不存在）
